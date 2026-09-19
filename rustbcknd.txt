@@ -1,0 +1,53 @@
+use std::collections::HashMap;
+
+#[derive(Default)]
+struct TrieNode {
+    children: HashMap<char, TrieNode>,
+    is_end: bool,
+}
+
+impl TrieNode {
+    fn insert(&mut self, word: &str) {
+        let mut node = self;
+        for ch in word.chars() {
+            node = node.children.entry(ch).or_default();
+        }
+        node.is_end = true;
+    }
+
+    fn search_prefix(&self, prefix: &str) -> bool {
+        let mut node = self;
+        for ch in prefix.chars() {
+            if let Some(next) = node.children.get(&ch) {
+                node = next;
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+struct InMemoryDB {
+    store: HashMap<String, String>,
+    trie: TrieNode,
+}
+
+impl InMemoryDB {
+    fn new() -> Self {
+        Self { store: HashMap::new(), trie: TrieNode::default() }
+    }
+
+    fn insert(&mut self, key: String, value: String) {
+        self.store.insert(key.clone(), value);
+        self.trie.insert(&key);
+    }
+
+    fn get(&self, key: &str) -> Option<&String> {
+        self.store.get(key)
+    }
+
+    fn search(&self, prefix: &str) -> bool {
+        self.trie.search_prefix(prefix)
+    }
+}

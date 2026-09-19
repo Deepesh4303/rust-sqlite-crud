@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Row Details</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #00ff99;
+      font-family: "Courier New", monospace;
+      text-align: center;
+      padding-top: 50px;
+    }
+    .retro-btn {
+      background-color: #222;
+      border: 2px solid #00ff99;
+      color: #00ff99;
+      padding: 12px 24px;
+      margin: 10px;
+      cursor: pointer;
+      box-shadow: 3px 3px #000, -3px -3px #00ff99;
+    }
+    .retro-btn:hover {
+      background-color: #00ff99;
+      color: #111;
+      box-shadow: 3px 3px #00ff99;
+    }
+  </style>
+</head>
+<body>
+  <h1>Row Details</h1>
+  <p id="row-info">Loading...</p>
+  <button class="retro-btn" onclick="goBack()">Back</button>
+
+  <script>
+    // Extract ID from query string
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+
+    // Show the ID (later you’ll fetch backend data here)
+    document.getElementById("row-info").textContent = "You clicked row ID: " + id;
+
+    // Back logic
+    function goBack() {
+      // Option 1: Go back in browser history
+      window.history.back();
+
+      // Option 2 (alternative): Always go back to table view in index.html
+      // window.location.href = "index.html#table";
+    }
+  </script>
+</body>
+</html>

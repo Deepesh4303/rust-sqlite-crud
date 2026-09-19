@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Patient Details</title>
+  <style>
+    body { background:#111; color:#143a89; font-family:monospace; }
+    input { margin:5px; padding:6px; }
+    button { margin:5px; padding:8px 12px; background:#00ff99; color:#111; border:none; cursor:pointer; }
+    button:hover { background:#0f0; }
+    #suggestions { border:1px solid #2564c9; background:#222; max-width:300px; position:absolute; z-index:10; }
+    #suggestions div { padding:6px; cursor:pointer; }
+    #suggestions div:hover { background:#00ff99; color:#111; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    td, th { border: 1px solid #00ff99; padding: 8px; }
+  </style>
+</head>
+<body>
+  <h2>Visitor Tracker - Details</h2>
+
+  <div>
+    <input type="text" id="nameInput" placeholder="Patient Name">
+    <input type="date" id="dateInput">
+    <input type="time" id="timeInput">
+    <input type="text" id="descInput" placeholder="Prescription Details">
+    <button id="saveBtn">Save</button>
+  </div>
+
+  <table id="details-table">
+    <tr><th>Name</th><th>Date</th><th>Time</th><th>Description</th></tr>
+  </table>
+
+  <script type="module">
+    import init, { InMemoryDB } from "./retro_backend/pkg/retro_backend.js";
+
+    let db;
+    const params = new URLSearchParams(window.location.search);
+    const patientName = params.get("name");
+
+    async function setup() {
+      await init();
+      db = InMemoryDB.load_from_file("db.json");
+
+      // Pre-fill patient name if passed from index.html
+      if (patientName) {
+        document.getElementById("nameInput").value = patientName;
+        renderTable(patientName);
+      }
+
+document.getElementById("saveBtn").onclick = async () => {
+  const name = document.getElementById("nameInput").value;
+  let date = document.getElementById("dateInput").value || new Date().toISOString().split("T")[0];
+  let time = document.getElementById("timeInput").value || new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const desc = document.getElementById("descInput").value;
+
+  const id = `${name}_${date}_${time}`;
+
+  const payload = { id, name, date, time, description: desc };
+
+  await fetch("https://script.google.com/macros/s/AKfycbzIRvF5Bmot58EW13D7VVpmKwOSmoGKpj6NEbddmfWZcYMfu1pHkAMkdIFraZ3f3Rl32A/exec", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" }
+  });
+
+  renderTable(name);
+};
+
+    }
+
+async function renderTable(name) {
+  const res = await fetch("https://script.google.com/macros/s/AKfycbzIRvF5Bmot58EW13D7VVpmKwOSmoGKpj6NEbddmfWZcYMfu1pHkAMkdIFraZ3f3Rl32A/exec");
+  const rows = await res.json();
+
+  const table = document.getElementById("details-table");
+  table.innerHTML = "<tr><th>Name</th><th>Date</th><th>Time</th><th>Description</th></tr>";
+
+  rows.forEach(r => {
+    if (r[1] === name) { // column 1 = Name
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td>`;
+      table.appendChild(row);
+    }
+  });
+}
+
+
+    setup();
+  </script>
+</body>
+</html>

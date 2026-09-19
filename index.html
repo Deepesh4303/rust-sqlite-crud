@@ -1,0 +1,289 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RETRO CLINIC OS // Patient History & Prescription Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- CRT Scanlines Overlay -->
+  <div class="crt-overlay"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="retro-header">
+      <div class="title-group">
+        <h1>
+          <span>[+] RETRO CLINIC OS</span>
+          <span class="cursor-blink">_</span>
+        </h1>
+        <div class="sub">// PATIENT HISTORY &amp; RX PERSISTENCE ENGINE</div>
+      </div>
+
+      <div class="status-bar">
+        <span class="status-pill online">[STATUS: ONLINE]</span>
+        <span class="status-pill">[DB: SQLITE LOCAL]</span>
+        <span class="status-pill">[TRIE: ACTIVE]</span>
+        <button id="crtToggleBtn" class="status-pill" style="cursor: pointer;">[CRT: ON]</button>
+        <button id="exportBackupBtn" class="status-pill" style="cursor: pointer; border-color: var(--c-cyan); color: var(--c-cyan);">[EXPORT BACKUP]</button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="retro-nav">
+      <button id="tab-btn-search" class="nav-btn active" onclick="switchTab('search')">
+        <span>[1] PATIENT SEARCH</span>
+      </button>
+      <button id="tab-btn-new" class="nav-btn" onclick="switchTab('new')">
+        <span>[2] + NEW PRESCRIPTION</span>
+      </button>
+      <button id="tab-btn-history" class="nav-btn" onclick="switchTab('history')">
+        <span>[3] PATIENT HISTORY</span>
+      </button>
+      <button id="tab-btn-table" class="nav-btn" onclick="switchTab('table')">
+        <span>[4] ALL RECORDS LOG</span>
+      </button>
+    </nav>
+
+    <!-- PANEL 1: Search & Live Autocomplete -->
+    <section id="panel-search" class="panel">
+      <div class="panel-title">
+        <span>// TRIE PREFIX SEARCH</span>
+        <small style="font-size: 11px; color: var(--c-text-muted);">[Alt+1]</small>
+      </div>
+
+      <div class="search-container">
+        <label class="input-label" for="searchInput">TYPE PATIENT NAME TO SEARCH (PREFIX AUTOCOMPLETE VIA RUST TRIE):</label>
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="retro-input" 
+          placeholder="Enter prefix (e.g. 'Al', 'John', 'Sarah')..." 
+          autocomplete="off"
+        >
+        <div id="searchSuggestions" class="suggestions-dropdown hidden"></div>
+        <div style="margin-top: 10px; font-size: 12px; color: var(--c-text-muted); display: flex; justify-content: space-between;">
+          <span>Hint: Use &uarr; &darr; arrows and [Enter] to select a patient.</span>
+          <span>Fast lookup &bull; Zero latency</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 35px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+        <div class="rx-card" style="cursor: pointer;" onclick="switchTab('new')">
+          <div class="rx-card-title" style="color: var(--c-green);">[+] Rapid Prescription Entry</div>
+          <p style="font-size: 12px; color: var(--c-text-muted); margin-top: 6px;">
+            Log a new visit for an existing or new patient. Automatically indexed into SQLite and Trie.
+          </p>
+        </div>
+        <div class="rx-card" style="cursor: pointer;" onclick="switchTab('table')">
+          <div class="rx-card-title" style="color: var(--c-cyan);">[&equiv;] Browse All Records</div>
+          <p style="font-size: 12px; color: var(--c-text-muted); margin-top: 6px;">
+            View full historical log, filter visits by date or keywords, and export database backups.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL 2: New Prescription Form -->
+    <section id="panel-new" class="panel hidden">
+      <div class="panel-title">
+        <span>// NEW PATIENT VISIT &amp; PRESCRIPTION</span>
+        <small style="font-size: 11px; color: var(--c-text-muted);">[Alt+2]</small>
+      </div>
+
+      <form id="newRxForm">
+        <div class="form-grid">
+          <!-- Patient Name with Trie Autocomplete -->
+          <div class="form-group" style="position: relative;">
+            <label class="input-label" for="newRxName">PATIENT NAME *</label>
+            <input 
+              type="text" 
+              id="newRxName" 
+              class="retro-input" 
+              placeholder="Full name..." 
+              required 
+              autocomplete="off"
+            >
+            <div id="newRxSuggestions" class="suggestions-dropdown hidden"></div>
+          </div>
+
+          <!-- Age -->
+          <div class="form-group">
+            <label class="input-label" for="newRxAge">AGE</label>
+            <input type="text" id="newRxAge" class="retro-input" placeholder="e.g. 34 or 45 yrs">
+          </div>
+
+          <!-- Gender -->
+          <div class="form-group">
+            <label class="input-label" for="newRxGender">GENDER</label>
+            <input type="text" id="newRxGender" class="retro-input" placeholder="M / F / Other">
+          </div>
+
+          <!-- Phone -->
+          <div class="form-group">
+            <label class="input-label" for="newRxPhone">PHONE NUMBER</label>
+            <input type="text" id="newRxPhone" class="retro-input" placeholder="e.g. 9876543210">
+          </div>
+
+          <!-- Date -->
+          <div class="form-group">
+            <label class="input-label" for="newRxDate">VISIT DATE *</label>
+            <input type="date" id="newRxDate" class="retro-input" required>
+          </div>
+
+          <!-- Time -->
+          <div class="form-group">
+            <label class="input-label" for="newRxTime">VISIT TIME *</label>
+            <input type="time" id="newRxTime" class="retro-input" required>
+          </div>
+
+          <!-- Symptoms / Diagnosis -->
+          <div class="form-group full-width">
+            <label class="input-label" for="newRxSymptoms">SYMPTOMS / CLINICAL DIAGNOSIS</label>
+            <textarea 
+              id="newRxSymptoms" 
+              class="retro-input" 
+              style="min-height: 70px;"
+              placeholder="e.g. Viral fever for 3 days, dry cough, headache, BP 120/80..."
+            ></textarea>
+          </div>
+
+          <!-- Prescription Details -->
+          <div class="form-group full-width">
+            <label class="input-label" for="newRxPrescription">PRESCRIPTION DETAILS (MEDICATIONS &amp; DOSAGE) *</label>
+            <textarea 
+              id="newRxPrescription" 
+              class="retro-input" 
+              style="min-height: 120px;"
+              placeholder="1. Tab Paracetamol 650mg - 1-0-1 after meals x 3 days&#10;2. Tab Cetirizine 10mg - 0-0-1 at night x 5 days&#10;3. Cough Syrup 10ml - thrice daily x 5 days&#10;Notes: Drink warm water, follow-up after 4 days." 
+              required
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="retro-btn" onclick="document.getElementById('newRxForm').reset(); initNewRxForm();">
+            Clear Form
+          </button>
+          <button type="submit" class="retro-btn cyan" style="font-size: 15px;">
+            [SAVE RECORD] &crarr;
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- PANEL 3: Patient History -->
+    <section id="panel-history" class="panel hidden">
+      <div class="panel-title">
+        <span id="historyPatientTitle">// PATIENT HISTORY</span>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <span id="historyVisitCount" class="status-pill">0 VISITS</span>
+          <button id="btnNewVisitForPatient" class="retro-btn cyan" style="padding: 6px 12px; font-size: 12px;">
+            + NEW VISIT FOR THIS PATIENT
+          </button>
+        </div>
+      </div>
+
+      <div id="historyTimeline" class="history-timeline">
+        <div style="padding: 20px; text-align: center; color: var(--c-text-muted);">
+          [Select a patient from search or table to view their history timeline]
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL 4: All Records Table -->
+    <section id="panel-table" class="panel hidden">
+      <div class="panel-title">
+        <span>// MASTER CLINIC RECORDS LOG</span>
+        <small style="font-size: 11px; color: var(--c-text-muted);">[Alt+4]</small>
+      </div>
+
+      <div class="table-filter-bar">
+        <input 
+          type="text" 
+          id="tableSearchInput" 
+          class="retro-input" 
+          placeholder="Filter by patient name..." 
+          style="max-width: 250px; padding: 8px 12px;"
+        >
+        <input 
+          type="date" 
+          id="tableDateInput" 
+          class="retro-input" 
+          style="max-width: 180px; padding: 8px 12px;"
+        >
+        <button id="tableResetBtn" class="retro-btn" style="padding: 8px 14px; font-size: 12px;">
+          Reset Filters
+        </button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="retro-table">
+          <thead>
+            <tr>
+              <th style="width: 60px;">ID</th>
+              <th>Patient Name</th>
+              <th>Date &amp; Time</th>
+              <th>Phone</th>
+              <th>Diagnosis / Symptoms</th>
+              <th>Prescription</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTableBody">
+            <!-- Rows injected by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast"></div>
+
+  <!-- Prescription Print Slip Modal -->
+  <div id="printModal" class="modal-backdrop hidden">
+    <div class="modal-content">
+      <div class="printable-slip">
+        <div class="clinic-head">
+          <h2>CLINIC MEDICAL PRESCRIPTION</h2>
+          <div style="font-size: 12px; color: var(--c-text-muted); margin-top: 4px;">
+            PRIMARY HEALTHCARE &bull; OUTPATIENT CLINIC
+          </div>
+        </div>
+
+        <div class="rx-slip-grid">
+          <div><strong>Patient Name:</strong> <span id="slipPatientName">-</span></div>
+          <div><strong>Date &amp; Time:</strong> <span id="slipDateTime">-</span></div>
+          <div style="grid-column: 1 / -1;"><strong>Vitals:</strong> <span id="slipVitals">-</span></div>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <strong style="font-size: 12px; color: var(--c-amber);">Symptoms / Diagnosis:</strong>
+          <div id="slipSymptoms" class="rx-field-content" style="border-left-color: var(--c-amber);">-</div>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+          <strong style="font-size: 14px; color: var(--c-cyan);">Rx (Medications &amp; Instructions):</strong>
+          <div id="slipPrescription" class="rx-field-content" style="white-space: pre-wrap; min-height: 80px;">-</div>
+        </div>
+
+        <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 15px; border-top: 1px dashed #334433;">
+          <span style="font-size: 11px; color: var(--c-text-muted);">Generated via Retro Clinic System</span>
+          <div style="text-align: center;">
+            <div style="border-bottom: 1px solid var(--c-dim-green); width: 160px; height: 30px;"></div>
+            <span style="font-size: 12px;">Doctor's Signature</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top: 0;">
+        <button class="retro-btn" onclick="closePrintModal()">Close</button>
+        <button class="retro-btn cyan" onclick="window.print()">[Print / Save PDF]</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
