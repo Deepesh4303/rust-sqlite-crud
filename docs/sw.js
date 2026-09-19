@@ -1,13 +1,11 @@
 // Service Worker for Retro Clinic PWA
-const CACHE_NAME = 'retro-clinic-v3';
+const CACHE_NAME = 'retro-clinic-v4';
 const LOCAL_ASSETS = [
   './index.html',
   './style.css',
   './app.js',
+  './db.js',
   './trie.js',
-  './db-worker.js',
-  './sqlite3.js',
-  './sqlite3.wasm',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'

@@ -1,4 +1,5 @@
-import { PatientTrie } from './trie.js';
+﻿import { PatientTrie } from './trie.js';
+import * as db from './db.js';
 
 // Global state
 const state = {
@@ -7,36 +8,10 @@ const state = {
   activeSuggestionIdx: -1,
   suggestions: [],
   trie: new PatientTrie(),
-  workerReady: false,
+  dbReady: false,
 };
 
-// Web Worker client setup
-let worker = null;
-let msgId = 0;
-const pendingCallbacks = new Map();
-
-function sendWorkerMsg(cmd, payload = {}) {
-  return new Promise((resolve, reject) => {
-    const id = ++msgId;
-    pendingCallbacks.set(id, { resolve, reject });
-    worker.postMessage({ id, cmd, payload });
-  });
-}
-
-function initWorker() {
-  worker = new Worker('db-worker.js');
-  worker.onmessage = (e) => {
-    const { id, success, result, error } = e.data;
-    if (pendingCallbacks.has(id)) {
-      const { resolve, reject } = pendingCallbacks.get(id);
-      pendingCallbacks.delete(id);
-      if (success) resolve(result);
-      else reject(new Error(error));
-    }
-  };
-}
-
-// Toast
+// Toast Notification
 function showToast(message, isError = false) {
   const toast = document.getElementById('toast');
   toast.textContent = message;
@@ -158,7 +133,7 @@ function updateSuggestionHighlight(items) {
 async function loadPatientHistory(patientName) {
   state.selectedPatient = patientName;
   try {
-    const history = await sendWorkerMsg('getHistory', { patientName });
+    const history = await db.getPatientHistory(patientName);
     renderHistoryView(patientName, history);
     switchTab('history');
   } catch (err) {
@@ -214,7 +189,7 @@ function renderHistoryView(patientName, records) {
     card.querySelector('.delete-btn').onclick = async () => {
       if (confirm(`Are you sure you want to delete this record #${rx.id} for ${rx.patient_name}?`)) {
         try {
-          await sendWorkerMsg('delete', { id: rx.id });
+          await db.deletePrescription(rx.id);
           showToast(`Record #${rx.id} deleted.`);
           loadPatientHistory(patientName);
         } catch (e) {
@@ -244,7 +219,7 @@ function initNewRxForm(prefillPatient = null) {
 
   if (prefillPatient) {
     document.getElementById('newRxName').value = prefillPatient;
-    sendWorkerMsg('getHistory', { patientName: prefillPatient }).then(records => {
+    db.getPatientHistory(prefillPatient).then(records => {
       if (records && records.length > 0) {
         const latest = records[0];
         if (latest.age && !document.getElementById('newRxAge').value) {
@@ -296,9 +271,9 @@ async function handleNewRxSubmit(e) {
   };
 
   try {
-    const created = await sendWorkerMsg('insert', payload);
+    const created = await db.insertPrescription(payload);
     state.trie.insert(created.patient_name);
-    showToast(`Prescription saved successfully for ${created.patient_name}!`);
+    showToast(`Prescription saved permanently for ${created.patient_name}!`);
     document.getElementById('newRxSymptoms').value = '';
     document.getElementById('newRxPrescription').value = '';
     loadPatientHistory(created.patient_name);
@@ -315,7 +290,7 @@ async function loadRecordsTable() {
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading records...</td></tr>';
 
   try {
-    const records = await sendWorkerMsg('getAll', { limit: 250, search, date });
+    const records = await db.getAllPrescriptions(250, search, date);
     tbody.innerHTML = '';
 
     if (records.length === 0) {
@@ -359,10 +334,10 @@ function closePrintModal() {
 }
 window.closePrintModal = closePrintModal;
 
-// Backup Export & Import (Supports syncing with Desktop clinic.db)
+// Backup Export & Import (100% compatible with desktop clinic.exe)
 async function exportDatabaseJson() {
   try {
-    const data = await sendWorkerMsg('export');
+    const data = await db.exportAll();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -381,9 +356,9 @@ async function importDatabaseJson(file) {
   try {
     const text = await file.text();
     const records = JSON.parse(text);
-    const count = await sendWorkerMsg('import', records);
+    const count = await db.importAll(records);
     // Re-index all patient names
-    const names = await sendWorkerMsg('getNames');
+    const names = await db.getDistinctPatientNames();
     state.trie = new PatientTrie();
     names.forEach(n => state.trie.insert(n));
     showToast(`Successfully imported ${count} records!`);
@@ -409,7 +384,7 @@ function toggleCrt() {
   localStorage.setItem('clinic_crt', isOff ? 'off' : 'on');
 }
 
-// Shortcuts
+// Keyboard shortcuts
 window.addEventListener('keydown', (e) => {
   if (e.altKey && e.key === '1') { e.preventDefault(); switchTab('search'); }
   if (e.altKey && e.key === '2') { e.preventDefault(); switchTab('new'); }
@@ -418,7 +393,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closePrintModal(); }
 });
 
-// BeforeInstallPrompt Handling
+// Install prompt handling
 let deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
@@ -452,38 +427,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('crtToggleBtn').textContent = '[CRT: OFF]';
   }
 
-  // Register Service Worker for Offline PWA
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').then((reg) => {
-      console.log('[PWA] Service Worker registered successfully:', reg.scope);
-    }).catch((err) => {
-      console.warn('[PWA] Service Worker registration failed:', err);
-    });
-  }
-
-  // Request persistent storage if supported (prevents OS from clearing OPFS)
+  // Request persistent storage (prevents OS from clearing data)
   if (navigator.storage && navigator.storage.persist) {
     navigator.storage.persist().then(granted => {
       console.log(`[Storage] Persistent storage granted: ${granted}`);
     });
   }
 
-  // Initialize Web Worker with SQLite WASM
-  initWorker();
+  // Initialize Native IndexedDB
   const statusEl = document.getElementById('statusPillDb');
-  statusEl.textContent = '[DB: LOADING...]';
+  statusEl.textContent = '[DB: CONNECTING...]';
 
   try {
-    const initRes = await sendWorkerMsg('init');
-    state.workerReady = true;
-    statusEl.textContent = '[DB: OPFS READY]';
+    await db.openDatabase();
+    state.dbReady = true;
+    statusEl.textContent = '[DB: PERSISTENT ONLINE]';
     statusEl.classList.add('online');
 
-    // Index all initial patient names into Trie
-    if (initRes.names && Array.isArray(initRes.names)) {
-      initRes.names.forEach(n => state.trie.insert(n));
-      console.log(`[Trie] Indexed ${initRes.names.length} patient names`);
-    }
+    // Index all existing patient names into Trie
+    const names = await db.getDistinctPatientNames();
+    names.forEach(n => state.trie.insert(n));
+    console.log(`[Trie] Indexed ${names.length} patient names from local storage`);
   } catch (err) {
     console.error("[Init Error]", err);
     statusEl.textContent = '[DB: ERROR]';
