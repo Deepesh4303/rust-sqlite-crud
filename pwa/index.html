@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -53,6 +53,13 @@
       }
     }
   </style>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(function(err) {
+        console.warn('SW registration error:', err);
+      });
+    }
+  </script>
 </head>
 <body>
   <!-- CRT Scanlines Overlay -->
@@ -72,6 +79,7 @@
       <div class="status-bar">
         <span class="status-pill online">[PWA READY]</span>
         <span id="statusPillDb" class="status-pill">[DB: LOADING...]</span>
+        <button id="installAppBtn" class="status-pill" style="cursor: pointer; display: none; border-color: #00ff99; background: #003311; color: #00ff99;">[+ INSTALL APP]</button>
         <button id="crtToggleBtn" class="status-pill" style="cursor: pointer;">[CRT: ON]</button>
         <button id="exportBackupBtn" class="status-pill" style="cursor: pointer; border-color: var(--c-cyan); color: var(--c-cyan);">[EXPORT]</button>
         <button id="importBackupBtn" class="status-pill" style="cursor: pointer; border-color: var(--c-amber); color: var(--c-amber);">[IMPORT]</button>

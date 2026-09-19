@@ -1,4 +1,4 @@
-﻿import { PatientTrie } from './trie.js';
+import { PatientTrie } from './trie.js';
 
 // Global state
 const state = {
@@ -416,6 +416,33 @@ window.addEventListener('keydown', (e) => {
   if (e.altKey && e.key === '3') { e.preventDefault(); switchTab('history'); }
   if (e.altKey && e.key === '4') { e.preventDefault(); switchTab('table'); }
   if (e.key === 'Escape') { closePrintModal(); }
+});
+
+// BeforeInstallPrompt Handling
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const installBtn = document.getElementById('installAppBtn');
+  if (installBtn) {
+    installBtn.style.display = 'inline-block';
+    installBtn.onclick = async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        console.log(`[PWA] Install prompt outcome: ${outcome}`);
+        deferredInstallPrompt = null;
+        installBtn.style.display = 'none';
+      }
+    };
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  console.log('[PWA] App successfully installed');
+  showToast('Retro Clinic OS installed successfully!');
+  const installBtn = document.getElementById('installAppBtn');
+  if (installBtn) installBtn.style.display = 'none';
 });
 
 // App Initialization
