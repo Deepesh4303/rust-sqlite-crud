@@ -1,16 +1,16 @@
-﻿// SQLite WASM + OPFS Database Web Worker
+// SQLite WASM + OPFS Database Web Worker
 // Uses official @sqlite.org/sqlite-wasm with opfs or fallback to in-memory/kvvfs/opfs-sahpool
 
 let db = null;
 let sqlite3 = null;
 
-const SQLITE_WASM_JS = "https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.46.1-build1/sqlite-wasm/jswasm/sqlite3.js";
+const SQLITE_WASM_JS = "sqlite3.js";
 
 async function initSqlite() {
   try {
     importScripts(SQLITE_WASM_JS);
   } catch (err) {
-    throw new Error("Failed to load sqlite-wasm from CDN: " + err.message);
+    throw new Error("Failed to load sqlite3.js: " + err.message);
   }
 
   sqlite3 = await self.sqlite3InitModule({

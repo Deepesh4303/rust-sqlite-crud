@@ -1,26 +1,22 @@
-﻿// Service Worker for Retro Clinic PWA
-const CACHE_NAME = 'retro-clinic-v2';
+// Service Worker for Retro Clinic PWA
+const CACHE_NAME = 'retro-clinic-v3';
 const LOCAL_ASSETS = [
   './index.html',
   './style.css',
   './app.js',
   './trie.js',
   './db-worker.js',
+  './sqlite3.js',
+  './sqlite3.wasm',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
-];
-
-const REMOTE_ASSETS = [
-  'https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.46.1-build1/sqlite-wasm/jswasm/sqlite3.js',
-  'https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.46.1-build1/sqlite-wasm/jswasm/sqlite3.wasm'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       console.log('[SW] Caching local assets');
-      // Cache local assets first
       for (const asset of LOCAL_ASSETS) {
         try {
           await cache.add(asset);
@@ -28,19 +24,9 @@ self.addEventListener('install', (event) => {
           console.warn(`[SW] Failed to cache local asset: ${asset}`, e);
         }
       }
-      // Also try caching root
       try {
         await cache.add('./');
       } catch (e) {}
-
-      // Cache remote CDN assets in background
-      for (const asset of REMOTE_ASSETS) {
-        try {
-          await cache.add(asset);
-        } catch (e) {
-          console.warn(`[SW] Failed to pre-cache remote asset: ${asset}`, e);
-        }
-      }
     })
   );
   self.skipWaiting();
